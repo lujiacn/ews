@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"net/http"
+	"time"
 
 	httpntlm "github.com/vadimi/go-http-ntlm"
 )
@@ -40,6 +41,7 @@ func Issue(ewsAddr string, domain string, username string, password string, body
 	}
 	//req.SetBasicAuth(username, password)
 	req.Header.Set("Content-Type", "text/xml")
+	client.Timeout = 10 * time.Second
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
 	return client.Do(req)
 }
