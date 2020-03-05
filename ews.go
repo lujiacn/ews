@@ -32,15 +32,14 @@ var (
 )
 
 // SendMail just send mail :)
-func SendMail(to []string, cc []string, topic string, content string) (resp string, err error) {
+func SendMail(to []string, cc []string, topic string, content string) (*http.Response, error) {
 	// check username format
 	b, err := BuildTextEmail(Username, to, cc, topic, []byte(content))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	_, err = Issue(EWSAddr, Username, Password, b)
-	return "", err
+	return Issue(EWSAddr, Username, Password, b)
 }
 
 func Issue(ewsAddr string, username string, password string, body []byte) (*http.Response, error) {
