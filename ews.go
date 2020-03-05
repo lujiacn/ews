@@ -4,7 +4,10 @@ package ews
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	httpntlm "github.com/vadimi/go-http-ntlm"
@@ -22,15 +25,25 @@ var soapheader = `<?xml version="1.0" encoding="utf-8" ?>
   <soap:Body>
 `
 
-func Issue(ewsAddr string, domain string, username string, password string, body []byte) (*http.Response, error) {
-	client := http.Client{
-		Transport: &httpntlm.NtlmTransport{
-			Domain:          domain,
-			User:            username,
-			Password:        password,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+var (
+	EWSAddr  string
+	Username string // mail or domin\account format
+	Password string
+)
+
+// SendMail just send mail :)
+func SendMail(to []string, cc []string, topic string, content string) (resp string, err error) {
+	// check username format
+	b, err := BuildTextEmail(Username, to, cc, topic, []byte(content))
+	if err != nil {
+		return "", err
 	}
+
+	_, err = Issue(EWSAddr, Username, Password, b)
+	return "", err
+}
+
+func Issue(ewsAddr string, username string, password string, body []byte) (*http.Response, error) {
 
 	b2 := []byte(soapheader)
 	b2 = append(b2, body...)
@@ -39,7 +52,36 @@ func Issue(ewsAddr string, domain string, username string, password string, body
 	if err != nil {
 		return nil, err
 	}
-	//req.SetBasicAuth(username, password)
+
+	var client *http.Client
+	re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+	isMail := re.MatchString(Username)
+
+	if !isMail {
+		// use domain
+		l := strings.SplitN(Username, "\\", 2)
+		if len(l) < 2 {
+			return nil, errors.New("Wrong format of username, not email or format with domain\\account")
+		}
+
+		domain := l[0]
+		account := l[1]
+		client = &http.Client{
+			Transport: &httpntlm.NtlmTransport{
+				Domain:          domain,
+				User:            account,
+				Password:        password,
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+	} else {
+		//for office365, no ntlm, emial as username
+		req.SetBasicAuth(username, password)
+		client = &http.Client{
+			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		}
+	}
+
 	req.Header.Set("Content-Type", "text/xml")
 	client.Timeout = 10 * time.Second
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
