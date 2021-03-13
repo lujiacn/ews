@@ -54,13 +54,13 @@ func Issue(ewsAddr string, username string, password string, body []byte) (*http
 
 	var client *http.Client
 	re := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
-	isMail := re.MatchString(Username)
+	isMail := re.MatchString(username)
 
 	if !isMail {
 		// use domain
-		l := strings.SplitN(Username, "\\", 2)
+		l := strings.Split(username, "\\")
 		if len(l) < 2 {
-			return nil, errors.New("Wrong format of username, not email or format with domain\\account")
+			return nil, errors.New("Wrong format of username, not email or format with domain\\account!")
 		}
 
 		domain := l[0]
